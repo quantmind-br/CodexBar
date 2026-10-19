@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Effects
+import QtQuick.Window
 import Quickshell
 import Quickshell.Io
 import qs.Common
@@ -308,6 +309,7 @@ PluginComponent {
 
     popoutContent: Component {
         PopoutComponent {
+            id: popout
             headerText: "CodexBar"
             detailsText: {
                 if (!root.available)
@@ -343,112 +345,128 @@ PluginComponent {
                     font.pixelSize: Theme.fontSizeSmall
                 }
 
-                Repeater {
-                    model: root.available ? root.snapshot.entries : []
+                // DMS sizes the popout to its full content without scrolling, so the provider list gets a
+                // screen-bound viewport while spending and the window buttons stay reachable below it.
+                DankFlickable {
+                    width: parent.width
+                    height: Math.min(providers.implicitHeight, Math.max(Theme.iconSize * 4, Screen.height * 0.8 - popout.headerHeight - popout.detailsHeight - footer.height - Theme.spacingM * 4))
+                    visible: providers.implicitHeight > 0
+                    contentHeight: providers.implicitHeight
+                    clip: true
 
                     Column {
-                        id: provider
-                        required property var modelData
+                        id: providers
                         width: parent.width
-                        spacing: Theme.spacingS
-
-                        Row {
-                            spacing: Theme.spacingS
-
-                            ProviderMark {
-                                provider: provider.modelData.provider
-                                tint: Theme.primary
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            StyledText {
-                                text: root.providerName(provider.modelData.provider)
-                                font.pixelSize: Theme.fontSizeMedium
-                                font.weight: Font.Bold
-                                color: Theme.surfaceText
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-
-                            StyledText {
-                                visible: !!provider.modelData.plan
-                                text: provider.modelData.plan
-                                font.pixelSize: Theme.fontSizeSmall
-                                color: Theme.surfaceVariantText
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-
-                        StyledText {
-                            width: parent.width
-                            visible: text !== ""
-                            text: provider.modelData.error || ""
-                            wrapMode: Text.WordWrap
-                            color: Theme.tempWarning
-                            font.pixelSize: Theme.fontSizeSmall
-                        }
-
-                        StyledText {
-                            width: parent.width
-                            visible: text !== "" && provider.modelData.statusLevel !== "none"
-                            text: provider.modelData.status || ""
-                            wrapMode: Text.WordWrap
-                            color: Theme.surfaceVariantText
-                            font.pixelSize: Theme.fontSizeSmall
-                        }
+                        spacing: Theme.spacingM
 
                         Repeater {
-                            model: provider.modelData.windows || []
+                            model: root.available ? root.snapshot.entries : []
 
                             Column {
-                                id: lane
+                                id: provider
                                 required property var modelData
-                                readonly property real value: root.quotaValue(modelData)
                                 width: parent.width
-                                spacing: Theme.spacingXS
+                                spacing: Theme.spacingS
 
                                 Row {
-                                    width: parent.width
+                                    spacing: Theme.spacingS
+
+                                    ProviderMark {
+                                        provider: provider.modelData.provider
+                                        tint: Theme.primary
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
 
                                     StyledText {
-                                        width: parent.width / 2
-                                        text: lane.modelData.label
-                                        elide: Text.ElideRight
-                                        font.pixelSize: Theme.fontSizeSmall
+                                        text: root.providerName(provider.modelData.provider)
+                                        font.pixelSize: Theme.fontSizeMedium
+                                        font.weight: Font.Bold
                                         color: Theme.surfaceText
+                                        anchors.verticalCenter: parent.verticalCenter
                                     }
 
                                     StyledText {
-                                        width: parent.width / 2
-                                        horizontalAlignment: Text.AlignRight
-                                        text: Math.round(lane.value) + "% " + (lane.modelData.displaySuffix || root.tr("left"))
+                                        visible: !!provider.modelData.plan
+                                        text: provider.modelData.plan
                                         font.pixelSize: Theme.fontSizeSmall
-                                        color: lane.modelData.warning ? Theme.tempWarning : Theme.surfaceText
-                                    }
-                                }
-
-                                Item {
-                                    width: parent.width
-                                    height: 8
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        radius: height / 2
-                                        color: Theme.surfaceContainerHighest
-                                    }
-
-                                    Rectangle {
-                                        width: Math.max(height, parent.width * Math.max(0, Math.min(1, lane.value / 100)))
-                                        height: parent.height
-                                        radius: height / 2
-                                        color: lane.modelData.warning ? Theme.tempWarning : Theme.primary
+                                        color: Theme.surfaceVariantText
+                                        anchors.verticalCenter: parent.verticalCenter
                                     }
                                 }
 
                                 StyledText {
+                                    width: parent.width
                                     visible: text !== ""
-                                    text: lane.modelData.resetText || ""
+                                    text: provider.modelData.error || ""
+                                    wrapMode: Text.WordWrap
+                                    color: Theme.tempWarning
                                     font.pixelSize: Theme.fontSizeSmall
+                                }
+
+                                StyledText {
+                                    width: parent.width
+                                    visible: text !== "" && provider.modelData.statusLevel !== "none"
+                                    text: provider.modelData.status || ""
+                                    wrapMode: Text.WordWrap
                                     color: Theme.surfaceVariantText
+                                    font.pixelSize: Theme.fontSizeSmall
+                                }
+
+                                Repeater {
+                                    model: provider.modelData.windows || []
+
+                                    Column {
+                                        id: lane
+                                        required property var modelData
+                                        readonly property real value: root.quotaValue(modelData)
+                                        width: parent.width
+                                        spacing: Theme.spacingXS
+
+                                        Row {
+                                            width: parent.width
+
+                                            StyledText {
+                                                width: parent.width / 2
+                                                text: lane.modelData.label
+                                                elide: Text.ElideRight
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                color: Theme.surfaceText
+                                            }
+
+                                            StyledText {
+                                                width: parent.width / 2
+                                                horizontalAlignment: Text.AlignRight
+                                                text: Math.round(lane.value) + "% " + (lane.modelData.displaySuffix || root.tr("left"))
+                                                font.pixelSize: Theme.fontSizeSmall
+                                                color: lane.modelData.warning ? Theme.tempWarning : Theme.surfaceText
+                                            }
+                                        }
+
+                                        Item {
+                                            width: parent.width
+                                            height: 8
+
+                                            Rectangle {
+                                                anchors.fill: parent
+                                                radius: height / 2
+                                                color: Theme.surfaceContainerHighest
+                                            }
+
+                                            Rectangle {
+                                                width: Math.max(height, parent.width * Math.max(0, Math.min(1, lane.value / 100)))
+                                                height: parent.height
+                                                radius: height / 2
+                                                color: lane.modelData.warning ? Theme.tempWarning : Theme.primary
+                                            }
+                                        }
+
+                                        StyledText {
+                                            visible: text !== ""
+                                            text: lane.modelData.resetText || ""
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            color: Theme.surfaceVariantText
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -456,54 +474,60 @@ PluginComponent {
                 }
 
                 Column {
+                    id: footer
                     width: parent.width
-                    spacing: Theme.spacingXS
-                    visible: root.available && (Array.isArray(root.snapshot.spending) && root.snapshot.spending.length > 0 || !!root.snapshot.costError)
+                    spacing: Theme.spacingM
 
-                    StyledText {
-                        text: root.tr("Local spending")
-                        font.pixelSize: Theme.fontSizeMedium
-                        font.weight: Font.Bold
-                        color: Theme.surfaceText
-                    }
-
-                    Repeater {
-                        model: root.available && Array.isArray(root.snapshot.spending) ? root.snapshot.spending : []
+                    Column {
+                        width: parent.width
+                        spacing: Theme.spacingXS
+                        visible: root.available && (Array.isArray(root.snapshot.spending) && root.snapshot.spending.length > 0 || !!root.snapshot.costError)
 
                         StyledText {
-                            required property var modelData
+                            text: root.tr("Local spending")
+                            font.pixelSize: Theme.fontSizeMedium
+                            font.weight: Font.Bold
+                            color: Theme.surfaceText
+                        }
+
+                        Repeater {
+                            model: root.available && Array.isArray(root.snapshot.spending) ? root.snapshot.spending : []
+
+                            StyledText {
+                                required property var modelData
+                                width: parent.width
+                                text: root.providerName(modelData.provider) + " · " + (modelData.error ? modelData.error : root.tr("today") + " " + root.money(modelData.today) + " · " + root.tr("30 days") + " " + root.money(modelData.month))
+                                wrapMode: Text.WordWrap
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: modelData.error ? Theme.tempWarning : Theme.surfaceVariantText
+                            }
+                        }
+
+                        // A failed scan keeps the previous totals; the backend's message says they may be out of date.
+                        StyledText {
                             width: parent.width
-                            text: root.providerName(modelData.provider) + " · " + (modelData.error ? modelData.error : root.tr("today") + " " + root.money(modelData.today) + " · " + root.tr("30 days") + " " + root.money(modelData.month))
+                            visible: text !== ""
+                            text: root.snapshot.costError || ""
                             wrapMode: Text.WordWrap
                             font.pixelSize: Theme.fontSizeSmall
-                            color: modelData.error ? Theme.tempWarning : Theme.surfaceVariantText
+                            color: Theme.tempWarning
                         }
                     }
 
-                    // A failed scan keeps the previous totals; the backend's message says they may be out of date.
-                    StyledText {
-                        width: parent.width
-                        visible: text !== ""
-                        text: root.snapshot.costError || ""
-                        wrapMode: Text.WordWrap
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.tempWarning
-                    }
-                }
+                    Row {
+                        spacing: Theme.spacingS
 
-                Row {
-                    spacing: Theme.spacingS
+                        DankButton {
+                            text: root.tr("Usage & Spend")
+                            iconName: "bar_chart"
+                            onClicked: root.launch("usage")
+                        }
 
-                    DankButton {
-                        text: root.tr("Usage & Spend")
-                        iconName: "bar_chart"
-                        onClicked: root.launch("usage")
-                    }
-
-                    DankButton {
-                        text: root.tr("Settings")
-                        iconName: "settings"
-                        onClicked: root.launch("settings")
+                        DankButton {
+                            text: root.tr("Settings")
+                            iconName: "settings"
+                            onClicked: root.launch("settings")
+                        }
                     }
                 }
             }
