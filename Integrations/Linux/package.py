@@ -39,9 +39,12 @@ def main():
     entries = json.loads((REPO / notices.RESOURCE).read_text())
     notices.check(REPO, entries)
     for path in ['Integrations/Linux/install.py', 'Integrations/Linux/icon.svg',
-                 'Integrations/Omarchy/Panel.qml', 'Integrations/Omarchy/manifest.json']:
+                 'Integrations/Omarchy/Panel.qml', 'Integrations/Omarchy/manifest.json',
+                 'Integrations/DankMaterialShell/install.py', 'Integrations/DankMaterialShell/plugin.json',
+                 'Integrations/DankMaterialShell/CodexBarWidget.qml',
+                 'Integrations/DankMaterialShell/CodexBarSettings.qml']:
         files[path] = REPO / path
-    # The adapter reads these beside itself; an archive without them falls back to text tags.
+    # The adapters read these; an archive without them falls back to text tags.
     for icon in sorted((REPO / 'Sources/CodexBar/Resources').glob('ProviderIcon-*.svg')):
         files[f'Integrations/Omarchy/icons/{icon.name}'] = icon
     # Explicit allowlist: never archive the checkout, user config, or local CLI resource tree.

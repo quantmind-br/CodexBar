@@ -44,7 +44,9 @@ class PackageTests(unittest.TestCase):
                 names = {name.split('/', 1)[1] for name in archive.getnames()}
                 fixed = {'bin/codexbar-linux', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES', 'Integrations/Linux/install.py',
                          'Integrations/Linux/icon.svg', 'Integrations/Omarchy/Panel.qml',
-                         'Integrations/Omarchy/manifest.json'}
+                         'Integrations/Omarchy/manifest.json', 'Integrations/DankMaterialShell/install.py',
+                         'Integrations/DankMaterialShell/plugin.json', 'Integrations/DankMaterialShell/CodexBarWidget.qml',
+                         'Integrations/DankMaterialShell/CodexBarSettings.qml'}
                 logos = sorted((REPO / 'Sources/CodexBar/Resources').glob('ProviderIcon-*.svg'))
                 self.assertTrue(logos)
                 self.assertEqual(names, fixed | {f'Integrations/Omarchy/icons/{logo.name}' for logo in logos})
@@ -68,6 +70,11 @@ class PackageTests(unittest.TestCase):
                 installed = shell.parent / 'plugins/steipete.codexbar/icons'
                 for logo in logos:
                     self.assertEqual((installed / logo.name).read_bytes(), logo.read_bytes())
+            subprocess.run(['python3', str(package / 'Integrations/DankMaterialShell/install.py'),
+                            '--cli', '/usr/bin/true'], env=env, check=True, capture_output=True)
+            installed = home / 'config/DankMaterialShell/plugins/codexBar/icons'
+            for logo in logos:
+                self.assertEqual((installed / logo.name).read_bytes(), logo.read_bytes())
 
     def test_invalid_version_does_not_create_an_archive(self):
         with tempfile.TemporaryDirectory() as temporary:
