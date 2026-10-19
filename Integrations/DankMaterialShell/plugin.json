@@ -1,0 +1,17 @@
+{
+    "id": "codexBar",
+    "name": "CodexBar",
+    "description": "AI usage meters, reset times and credits for your providers, powered by the CodexBar Linux desktop backend",
+    "version": "1.0.0",
+    "author": "steipete",
+    "type": "widget",
+    "capabilities": ["dankbar-widget", "monitoring"],
+    "component": "./CodexBarWidget.qml",
+    "settings": "./CodexBarSettings.qml",
+    "icon": "data_usage",
+    "requires": ["codexbar-linux"],
+    "permissions": [
+        "settings_read",
+        "settings_write"
+    ]
+}

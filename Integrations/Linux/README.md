@@ -145,7 +145,8 @@ python3 Integrations/Linux/install.py --cli /absolute/path/to/codexbar
 ~/.local/bin/codexbar-linux --settings
 ```
 
-Add `--omarchy` to install the compact Omarchy adapter. Add `--no-autostart` to
+Add `--omarchy` to install the compact Omarchy adapter. On DankMaterialShell, use
+[its installer](../DankMaterialShell/README.md) instead. Add `--no-autostart` to
 disable starting at login. Installation is per user, preserves settings, and
 backs up existing preferences before changes. Reinstallation preserves disabled
 autostart. A release archive can also be installed without a checkout:
