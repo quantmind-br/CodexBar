@@ -70,7 +70,9 @@ class InstallTests(unittest.TestCase):
             environment = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(config), XDG_DATA_HOME=str(home / 'data'))
             subprocess.run(['python3', str(script), '--cli', '/usr/bin/true', '--binary', str(backend)],
                            env=environment, check=True, capture_output=True)
-            self.assertEqual((home / 'configured').read_text().split('\n')[:2], ['--configure', '{"showTray": false}'])
+            arguments = (home / 'configured').read_text().split('\n')
+            self.assertEqual(arguments[0], '--configure')
+            self.assertEqual(json.loads(arguments[1]), {'executable': '/usr/bin/true', 'provider': 'claude', 'showTray': False})
 
 
 if __name__ == '__main__':

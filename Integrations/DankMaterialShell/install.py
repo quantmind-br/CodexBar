@@ -47,14 +47,14 @@ def main():
         return 1
     config = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config'))
     # DMS draws the bar widget, so the standalone tray would be a duplicate indicator. A running
-    # backend keeps settings in memory, so it must apply the change itself; otherwise the file is
-    # rewritten the way the desktop installer writes it.
+    # backend keeps settings in memory and writes them all back on any change, so it must receive
+    # what the desktop installer just wrote too; otherwise the file is rewritten the same way.
+    preferences = config / 'codexbar/linux.json'
+    settings = json.loads(preferences.read_text(encoding='utf-8'))
+    settings['showTray'] = False
+    changes = {key: settings[key] for key in ['executable', 'provider', 'showTray']}
     backend = Path.home() / '.local/bin/codexbar-linux'
-    hide_tray = [str(backend), '--configure', json.dumps({'showTray': False})]
-    if not applied(subprocess.run(hide_tray, capture_output=True, text=True)):
-        preferences = config / 'codexbar/linux.json'
-        settings = json.loads(preferences.read_text(encoding='utf-8'))
-        settings['showTray'] = False
+    if not applied(subprocess.run([str(backend), '--configure', json.dumps(changes)], capture_output=True, text=True)):
         desktop_installer().atomic(preferences, (json.dumps(settings, indent=2, ensure_ascii=False) + '\n').encode(),
                                    follow_links=True)
     plugin = config / 'DankMaterialShell/plugins' / PLUGIN_ID
