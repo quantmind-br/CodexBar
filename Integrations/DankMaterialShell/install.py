@@ -2,6 +2,7 @@
 """Install the Linux desktop app and the DankMaterialShell bar plugin for this user."""
 import argparse
 import datetime
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,20 @@ import sys
 REPO = Path(__file__).resolve().parents[2]
 PLUGIN_ID = 'codexBar'
 PLUGIN_FILES = ['plugin.json', 'CodexBarWidget.qml', 'CodexBarSettings.qml']
+
+
+def desktop_installer():
+    specification = importlib.util.spec_from_file_location('codexbar_linux_install', REPO / 'Integrations/Linux/install.py')
+    module = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(module)
+    return module
+
+
+def applied(result):
+    try:
+        return result.returncode == 0 and json.loads(result.stdout).get('ok') is True
+    except ValueError:
+        return False
 
 
 def main():
@@ -31,12 +46,17 @@ def main():
     if subprocess.call(command) != 0:
         return 1
     config = Path(os.environ.get('XDG_CONFIG_HOME', Path.home() / '.config'))
-    # DMS draws the bar widget, so the standalone tray would be a duplicate indicator.
-    preferences = config / 'codexbar/linux.json'
-    settings = json.loads(preferences.read_text(encoding='utf-8'))
-    settings['showTray'] = False
-    target = Path(os.path.realpath(preferences))
-    target.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+    # DMS draws the bar widget, so the standalone tray would be a duplicate indicator. A running
+    # backend keeps settings in memory, so it must apply the change itself; otherwise the file is
+    # rewritten the way the desktop installer writes it.
+    backend = Path.home() / '.local/bin/codexbar-linux'
+    hide_tray = [str(backend), '--configure', json.dumps({'showTray': False})]
+    if not applied(subprocess.run(hide_tray, capture_output=True, text=True)):
+        preferences = config / 'codexbar/linux.json'
+        settings = json.loads(preferences.read_text(encoding='utf-8'))
+        settings['showTray'] = False
+        desktop_installer().atomic(preferences, (json.dumps(settings, indent=2, ensure_ascii=False) + '\n').encode(),
+                                   follow_links=True)
     plugin = config / 'DankMaterialShell/plugins' / PLUGIN_ID
     if plugin.exists() or plugin.is_symlink():
         # Archive outside the plugin discovery directory so DMS never loads a stale copy.

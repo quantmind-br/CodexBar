@@ -38,11 +38,39 @@ class InstallTests(unittest.TestCase):
             self.assertEqual(len(list((config / 'DankMaterialShell/backups').iterdir())), 1)
             self.assertTrue((config / 'autostart/com.steipete.CodexBar.desktop').exists())
 
-    def test_requires_a_cli(self):
-        script = Path(__file__).with_name('install.py')
-        result = subprocess.run(['python3', str(script)], capture_output=True, text=True)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn('--cli', result.stderr)
+    def test_symlinked_preferences_keep_their_link(self):
+        with tempfile.TemporaryDirectory(prefix='codexbar dms ') as temporary:
+            home = Path(temporary)
+            config = home / 'config'
+            managed = home / 'dotfiles/linux.json'
+            managed.parent.mkdir(parents=True)
+            managed.write_text(json.dumps({'provider': 'claude', 'showTray': True}))
+            preferences = config / 'codexbar/linux.json'
+            preferences.parent.mkdir(parents=True)
+            preferences.symlink_to(managed)
+            script = Path(__file__).with_name('install.py')
+            environment = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(config), XDG_DATA_HOME=str(home / 'data'))
+            subprocess.run(['python3', str(script), '--cli', '/usr/bin/true', '--binary', '/usr/bin/true'],
+                           env=environment, check=True, capture_output=True)
+            self.assertTrue(preferences.is_symlink())
+            self.assertFalse(json.loads(managed.read_text())['showTray'])
+
+    def test_running_backend_applies_the_tray_setting(self):
+        with tempfile.TemporaryDirectory(prefix='codexbar dms ') as temporary:
+            home = Path(temporary)
+            config = home / 'config'
+            preferences = config / 'codexbar/linux.json'
+            preferences.parent.mkdir(parents=True)
+            preferences.write_text(json.dumps({'provider': 'claude', 'showTray': True}))
+            # Stands in for a running backend: it answers IPC and records the request.
+            backend = home / 'backend'
+            backend.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$HOME/configured"\necho \'{"ok":true}\'\n')
+            backend.chmod(0o755)
+            script = Path(__file__).with_name('install.py')
+            environment = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(config), XDG_DATA_HOME=str(home / 'data'))
+            subprocess.run(['python3', str(script), '--cli', '/usr/bin/true', '--binary', str(backend)],
+                           env=environment, check=True, capture_output=True)
+            self.assertEqual((home / 'configured').read_text().split('\n')[:2], ['--configure', '{"showTray": false}'])
 
 
 if __name__ == '__main__':
