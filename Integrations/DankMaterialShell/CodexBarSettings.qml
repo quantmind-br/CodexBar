@@ -18,7 +18,7 @@ PluginSettings {
 
     StyledText {
         width: parent.width
-        text: "The bar reads the codexbar-linux backend snapshot; it never queries providers itself. Providers, accounts, polling, notifications and bar detail live in the CodexBar Settings window."
+        text: I18n.trFor("codexBar", "The bar reads the codexbar-linux backend snapshot; it never queries providers itself. Providers, accounts, polling, notifications and bar detail live in the CodexBar Settings window.")
         font.pixelSize: Theme.fontSizeSmall
         color: Theme.surfaceVariantText
         wrapMode: Text.WordWrap
@@ -26,30 +26,30 @@ PluginSettings {
 
     StringSetting {
         settingKey: "desktopExecutable"
-        label: "Backend executable"
-        description: "CodexBar Linux desktop app that owns polling"
-        placeholder: "codexbar-linux"
+        label: I18n.trFor("codexBar", "Backend executable")
+        description: I18n.trFor("codexBar", "CodexBar Linux desktop app that owns polling")
+        placeholder: "~/.local/bin/codexbar-linux"
         defaultValue: ""
     }
 
     ToggleSetting {
         settingKey: "startBackend"
-        label: "Start backend"
-        description: "Launch the backend in the background when the bar finds it absent"
+        label: I18n.trFor("codexBar", "Start backend")
+        description: I18n.trFor("codexBar", "Launch the backend in the background when the bar finds it absent")
         defaultValue: true
     }
 
     ToggleSetting {
         settingKey: "iconsOnly"
-        label: "Icons only"
-        description: "Show only the configured providers' marks in the bar; a mark turns to the warning color when its quota runs low"
+        label: I18n.trFor("codexBar", "Icons only")
+        description: I18n.trFor("codexBar", "Show only the configured providers' marks in the bar; a mark turns to the warning color when its quota runs low")
         defaultValue: true
     }
 
     SliderSetting {
         settingKey: "pollSeconds"
-        label: "Snapshot interval"
-        description: "How often the bar reads the backend's cached snapshot"
+        label: I18n.trFor("codexBar", "Snapshot interval")
+        description: I18n.trFor("codexBar", "How often the bar reads the backend's cached snapshot")
         defaultValue: 5
         minimum: 2
         maximum: 60
@@ -58,8 +58,8 @@ PluginSettings {
     }
 
     DankButton {
-        text: "Open CodexBar Settings"
+        text: I18n.trFor("codexBar", "Open CodexBar Settings")
         iconName: "settings"
-        onClicked: Quickshell.execDetached([String(root.loadValue("desktopExecutable", "") || "codexbar-linux"), "--settings"])
+        onClicked: Quickshell.execDetached([String(root.loadValue("desktopExecutable", "") || Quickshell.env("HOME") + "/.local/bin/codexbar-linux"), "--settings"])
     }
 }

@@ -15,7 +15,8 @@ PluginComponent {
     property string response: ""
     property double lastLaunch: 0
 
-    readonly property string executable: String(pluginData.desktopExecutable || "codexbar-linux")
+    // The installer's absolute path: a graphical session started before ~/.local/bin existed lacks it on PATH.
+    readonly property string executable: String(pluginData.desktopExecutable || Quickshell.env("HOME") + "/.local/bin/codexbar-linux")
     readonly property bool startBackend: pluginData.startBackend !== false
     readonly property int pollSeconds: Math.max(2, Number(pluginData.pollSeconds || 5))
     readonly property bool iconsOnly: pluginData.iconsOnly !== false
@@ -43,6 +44,10 @@ PluginComponent {
     }
     readonly property color pillColor: !available ? Theme.surfaceVariantText : warning ? Theme.tempWarning : Theme.surfaceText
     readonly property real textSize: Theme.barTextSize(barThickness, barConfig?.fontScale, barConfig?.maximizeWidgetText)
+
+    function tr(term) {
+        return I18n.trFor("codexBar", term);
+    }
 
     function poll() {
         if (!reader.running)
@@ -96,7 +101,7 @@ PluginComponent {
             "openrouter": "OpenRouter",
             "kiro": "Kiro"
         };
-        return names[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : "Unknown provider");
+        return names[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : tr("Unknown provider"));
     }
 
     function quotaValue(window) {
@@ -120,7 +125,8 @@ PluginComponent {
 
     Process {
         id: reader
-        command: [root.executable, "--snapshot"]
+        // Without the opt-in a newly started backend never scans local spending.
+        command: [root.executable, "--snapshot", "--with-spending"]
         stdout: StdioCollector {
             waitForEnd: true
             onStreamFinished: root.response = text
@@ -264,6 +270,14 @@ PluginComponent {
                 anchors.horizontalCenter: parent.horizontalCenter
             }
 
+            StyledText {
+                visible: root.available && root.snapshot.stale === true
+                text: "!"
+                color: Theme.tempWarning
+                font.pixelSize: root.textSize
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
             Repeater {
                 model: root.segments
 
@@ -297,12 +311,12 @@ PluginComponent {
             headerText: "CodexBar"
             detailsText: {
                 if (!root.available)
-                    return "Backend not running";
+                    return root.tr("Backend not running");
                 if (root.snapshot.error)
                     return root.snapshot.error;
                 if (root.snapshot.busy)
-                    return "Refreshing…";
-                return "Updated " + root.snapshot.updated + (root.snapshot.stale ? " · older data" : "");
+                    return root.tr("Refreshing…");
+                return root.tr("Updated") + " " + root.snapshot.updated + (root.snapshot.stale ? " · " + root.tr("older data") : "");
             }
             showCloseButton: true
 
@@ -323,7 +337,7 @@ PluginComponent {
                 StyledText {
                     width: parent.width
                     visible: !root.available
-                    text: root.startBackend ? "Starting the CodexBar backend… Check that " + root.executable + " is installed." : "Start " + root.executable + " --background to see usage."
+                    text: root.startBackend ? root.tr("Starting the CodexBar backend… Check that this is installed:") + " " + root.executable : root.tr("Run this to see usage:") + " " + root.executable + " --background"
                     wrapMode: Text.WordWrap
                     color: Theme.surfaceVariantText
                     font.pixelSize: Theme.fontSizeSmall
@@ -406,7 +420,7 @@ PluginComponent {
                                     StyledText {
                                         width: parent.width / 2
                                         horizontalAlignment: Text.AlignRight
-                                        text: Math.round(lane.value) + "% " + (lane.modelData.displaySuffix || "left")
+                                        text: Math.round(lane.value) + "% " + (lane.modelData.displaySuffix || root.tr("left"))
                                         font.pixelSize: Theme.fontSizeSmall
                                         color: lane.modelData.warning ? Theme.tempWarning : Theme.surfaceText
                                     }
@@ -444,10 +458,10 @@ PluginComponent {
                 Column {
                     width: parent.width
                     spacing: Theme.spacingXS
-                    visible: root.available && Array.isArray(root.snapshot.spending) && root.snapshot.spending.length > 0
+                    visible: root.available && (Array.isArray(root.snapshot.spending) && root.snapshot.spending.length > 0 || !!root.snapshot.costError)
 
                     StyledText {
-                        text: "Local spending"
+                        text: root.tr("Local spending")
                         font.pixelSize: Theme.fontSizeMedium
                         font.weight: Font.Bold
                         color: Theme.surfaceText
@@ -459,11 +473,21 @@ PluginComponent {
                         StyledText {
                             required property var modelData
                             width: parent.width
-                            text: root.providerName(modelData.provider) + " · today " + root.money(modelData.today) + " · 30 days " + root.money(modelData.month)
-                            elide: Text.ElideRight
+                            text: root.providerName(modelData.provider) + " · " + (modelData.error ? modelData.error : root.tr("today") + " " + root.money(modelData.today) + " · " + root.tr("30 days") + " " + root.money(modelData.month))
+                            wrapMode: Text.WordWrap
                             font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.surfaceVariantText
+                            color: modelData.error ? Theme.tempWarning : Theme.surfaceVariantText
                         }
+                    }
+
+                    // A failed scan keeps the previous totals; the backend's message says they may be out of date.
+                    StyledText {
+                        width: parent.width
+                        visible: text !== ""
+                        text: root.snapshot.costError || ""
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.tempWarning
                     }
                 }
 
@@ -471,13 +495,13 @@ PluginComponent {
                     spacing: Theme.spacingS
 
                     DankButton {
-                        text: "Usage & Spend"
+                        text: root.tr("Usage & Spend")
                         iconName: "bar_chart"
                         onClicked: root.launch("usage")
                     }
 
                     DankButton {
-                        text: "Settings"
+                        text: root.tr("Settings")
                         iconName: "settings"
                         onClicked: root.launch("settings")
                     }
